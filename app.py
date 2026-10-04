@@ -45,6 +45,9 @@ if "chatbot" not in st.session_state:
 if "video_processed" not in st.session_state:
     st.session_state.video_processed = False
 
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
 
 # -----------------------------------
 # YouTube URL
@@ -63,6 +66,7 @@ youtube_url = st.text_input(
 if st.button("🚀 Process Video"):
 
     if not youtube_url:
+
         st.warning("Please enter a YouTube URL.")
 
     else:
@@ -77,7 +81,9 @@ if st.button("🚀 Process Video"):
 
                 transcript = get_transcript(youtube_url)
 
-            st.success("Transcript retrieved successfully!")
+            st.success(
+                "Transcript retrieved successfully!"
+            )
 
 
             # -------------------------
@@ -114,8 +120,9 @@ if st.button("🚀 Process Video"):
 
                 embedding_model = EmbeddingModel()
 
-                embeddings = embedding_model.embed_documents(
-                    chunks
+                embeddings = (
+                    embedding_model
+                    .embed_documents(chunks)
                 )
 
 
@@ -144,13 +151,25 @@ if st.button("🚀 Process Video"):
             # Save in session state
             # -------------------------
 
-            st.session_state.embedding_model = embedding_model
+            st.session_state.embedding_model = (
+                embedding_model
+            )
 
-            st.session_state.vector_store = vector_store
+            st.session_state.vector_store = (
+                vector_store
+            )
 
             st.session_state.chatbot = chatbot
 
             st.session_state.video_processed = True
+
+
+            # -------------------------
+            # Clear previous chat
+            # -------------------------
+
+            st.session_state.chat_history = []
+
 
             st.success(
                 "🎉 Video processed successfully!"
@@ -172,7 +191,29 @@ if st.session_state.video_processed:
 
     st.divider()
 
-    st.subheader("💬 Ask Questions About the Video")
+    st.subheader(
+        "💬 Ask Questions About the Video"
+    )
+
+
+    # -----------------------------------
+    # Display previous messages
+    # -----------------------------------
+
+    for message in st.session_state.chat_history:
+
+        with st.chat_message(
+            message["role"]
+        ):
+
+            st.write(
+                message["content"]
+            )
+
+
+    # -----------------------------------
+    # Chat input
+    # -----------------------------------
 
     question = st.chat_input(
         "Ask something about the video..."
@@ -181,7 +222,12 @@ if st.session_state.video_processed:
 
     if question:
 
+        # -----------------------------
+        # Display user question
+        # -----------------------------
+
         with st.chat_message("user"):
+
             st.write(question)
 
 
@@ -190,7 +236,8 @@ if st.session_state.video_processed:
         # -----------------------------
 
         query_embedding = (
-            st.session_state.embedding_model
+            st.session_state
+            .embedding_model
             .embed_query(question)
         )
 
@@ -200,7 +247,8 @@ if st.session_state.video_processed:
         # -----------------------------
 
         results = (
-            st.session_state.vector_store
+            st.session_state
+            .vector_store
             .search(
                 query_embedding,
                 top_k=3
@@ -217,11 +265,37 @@ if st.session_state.video_processed:
             with st.spinner("Thinking..."):
 
                 answer = (
-                    st.session_state.chatbot
+                    st.session_state
+                    .chatbot
                     .generate_answer(
                         question,
-                        results
+                        results,
+                        st.session_state.chat_history
                     )
                 )
 
             st.write(answer)
+
+
+        # -----------------------------
+        # Save user question
+        # -----------------------------
+
+        st.session_state.chat_history.append(
+            {
+                "role": "user",
+                "content": question
+            }
+        )
+
+
+        # -----------------------------
+        # Save assistant answer
+        # -----------------------------
+
+        st.session_state.chat_history.append(
+            {
+                "role": "assistant",
+                "content": answer
+            }
+        )
