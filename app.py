@@ -48,6 +48,72 @@ if "video_processed" not in st.session_state:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
+if "conversations" not in st.session_state:
+    st.session_state.conversations = []
+
+if "current_conversation" not in st.session_state:
+    st.session_state.current_conversation = None
+
+
+# -----------------------------------
+# Sidebar - Conversation History
+# -----------------------------------
+
+with st.sidebar:
+
+    st.title("💬 Conversations")
+
+    # -----------------------------------
+    # New Conversation
+    # -----------------------------------
+
+    if st.button(
+        "➕ New Conversation",
+        use_container_width=True
+    ):
+
+        st.session_state.chat_history = []
+
+        st.session_state.current_conversation = None
+
+        st.rerun()
+
+
+    st.divider()
+
+
+    # -----------------------------------
+    # Conversation History
+    # -----------------------------------
+
+    st.subheader("History")
+
+    if not st.session_state.conversations:
+
+        st.caption("No previous conversations.")
+
+    else:
+
+        for i, conversation in enumerate(
+            st.session_state.conversations
+        ):
+
+            title = conversation["title"]
+
+            if st.button(
+                title,
+                key=f"conversation_{i}",
+                use_container_width=True
+            ):
+
+                st.session_state.chat_history = (
+                    conversation["messages"].copy()
+                )
+
+                st.session_state.current_conversation = i
+
+                st.rerun()
+
 
 # -----------------------------------
 # YouTube URL
@@ -67,7 +133,9 @@ if st.button("🚀 Process Video"):
 
     if not youtube_url:
 
-        st.warning("Please enter a YouTube URL.")
+        st.warning(
+            "Please enter a YouTube URL."
+        )
 
     else:
 
@@ -77,9 +145,13 @@ if st.button("🚀 Process Video"):
             # Get transcript
             # -------------------------
 
-            with st.spinner("Getting YouTube transcript..."):
+            with st.spinner(
+                "Getting YouTube transcript..."
+            ):
 
-                transcript = get_transcript(youtube_url)
+                transcript = get_transcript(
+                    youtube_url
+                )
 
             st.success(
                 "Transcript retrieved successfully!"
@@ -90,7 +162,9 @@ if st.button("🚀 Process Video"):
             # Clean transcript
             # -------------------------
 
-            with st.spinner("Cleaning transcript..."):
+            with st.spinner(
+                "Cleaning transcript..."
+            ):
 
                 cleaned_transcript = clean_transcript(
                     transcript
@@ -101,7 +175,9 @@ if st.button("🚀 Process Video"):
             # Create chunks
             # -------------------------
 
-            with st.spinner("Creating transcript chunks..."):
+            with st.spinner(
+                "Creating transcript chunks..."
+            ):
 
                 chunks = split_transcript(
                     cleaned_transcript
@@ -116,7 +192,9 @@ if st.button("🚀 Process Video"):
             # Create embeddings
             # -------------------------
 
-            with st.spinner("Creating embeddings..."):
+            with st.spinner(
+                "Creating embeddings..."
+            ):
 
                 embedding_model = EmbeddingModel()
 
@@ -130,7 +208,9 @@ if st.button("🚀 Process Video"):
             # Create FAISS index
             # -------------------------
 
-            with st.spinner("Building vector database..."):
+            with st.spinner(
+                "Building vector database..."
+            ):
 
                 vector_store = VectorStore()
 
@@ -159,7 +239,9 @@ if st.button("🚀 Process Video"):
                 vector_store
             )
 
-            st.session_state.chatbot = chatbot
+            st.session_state.chatbot = (
+                chatbot
+            )
 
             st.session_state.video_processed = True
 
@@ -169,6 +251,8 @@ if st.button("🚀 Process Video"):
             # -------------------------
 
             st.session_state.chat_history = []
+
+            st.session_state.current_conversation = None
 
 
             st.success(
@@ -299,3 +383,31 @@ if st.session_state.video_processed:
                 "content": answer
             }
         )
+
+
+        # -----------------------------------
+        # Save conversation
+        # -----------------------------------
+
+        if st.session_state.current_conversation is None:
+
+            conversation = {
+                "title": question[:40],
+                "messages": st.session_state.chat_history.copy()
+            }
+
+            st.session_state.conversations.append(
+                conversation
+            )
+
+            st.session_state.current_conversation = (
+                len(st.session_state.conversations) - 1
+            )
+
+        else:
+
+            st.session_state.conversations[
+                st.session_state.current_conversation
+            ]["messages"] = (
+                st.session_state.chat_history.copy()
+            )
